@@ -29,6 +29,9 @@
             --purple:  #bf00ff;
             --pink:    #ff006e;
             --bg:      #050008;
+            --bar-h:   46px;
+            /* total clearance from bottom viewport edge */
+            --bar-clear: calc(var(--bar-h) + env(safe-area-inset-bottom));
         }
 
         html, body {
@@ -80,9 +83,11 @@
             50%      { opacity: 1; transform: scale(1); }
         }
 
-        /* ── CRT Overlay ── */
+        /* ── CRT Overlay (stops at bottom bar) ── */
         #crt {
-            position: fixed; inset: 0; z-index: 900;
+            position: fixed;
+            inset: 0 0 var(--bar-clear) 0;
+            z-index: 900;
             pointer-events: none;
             opacity: 0; transition: opacity .3s;
         }
@@ -110,7 +115,10 @@
             opacity: 0; transition: opacity .3s;
             animation: scan-roll 5s linear infinite;
         }
-        @keyframes scan-roll { from { top: -4px; } to { top: 100vh; } }
+        @keyframes scan-roll {
+            from { top: -4px; }
+            to   { top: calc(100vh - var(--bar-clear)); }
+        }
 
         body.crt #crt        { opacity: 1; }
         body.crt #crt-scan   { opacity: 1; }
@@ -118,7 +126,9 @@
 
         /* ── Drag-active page border ── */
         #drag-ring {
-            position: fixed; inset: 0; z-index: 950;
+            position: fixed;
+            inset: 0 0 var(--bar-clear) 0;
+            z-index: 950;
             border: 3px solid transparent;
             pointer-events: none;
             transition: border-color .15s, box-shadow .15s;
@@ -135,14 +145,18 @@
 
         /* ── Drop Overlay (captures drops over the ruffle iframe) ── */
         #drop-overlay {
-            position: fixed; inset: 0; z-index: 200;
+            position: fixed;
+            inset: 0 0 var(--bar-clear) 0;
+            z-index: 200;
             pointer-events: none;
         }
         body.drag-active #drop-overlay { pointer-events: all; }
 
         /* ── Landing ── */
         #landing {
-            position: fixed; inset: 0; z-index: 10;
+            position: fixed;
+            inset: 0 0 var(--bar-clear) 0;
+            z-index: 10;
             display: flex; flex-direction: column;
             align-items: center; justify-content: center;
             gap: 2.2rem;
@@ -286,9 +300,11 @@
         }
         .tagline span { color: var(--yellow); opacity: .6; }
 
-        /* ── Player ── */
+        /* ── Player (stops at bottom bar) ── */
         #player-wrap {
-            position: fixed; inset: 0; z-index: 5;
+            position: fixed;
+            inset: 0 0 var(--bar-clear) 0;
+            z-index: 5;
             opacity: 0; pointer-events: none;
             transition: opacity .5s;
         }
@@ -303,71 +319,11 @@
             display: block;
         }
 
-        /* ── File Badge ── */
-        #badge {
-            position: fixed;
-            top: calc(1rem + env(safe-area-inset-top));
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 100;
-            padding: .38rem 1.1rem;
-            background: rgba(0,0,0,.7);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(0,255,255,.28);
-            border-radius: 20px;
-            color: rgba(0,255,255,.85);
-            font-size: .72rem;
-            letter-spacing: .12em;
-            white-space: nowrap;
-            max-width: 60vw;
-            overflow: hidden; text-overflow: ellipsis;
-            opacity: 0; transition: opacity .35s;
-        }
-        #badge.show { opacity: 1; }
-
-        /* ── Controls ── */
-        #controls {
-            position: fixed;
-            bottom: calc(1.4rem + env(safe-area-inset-bottom));
-            right: calc(1.4rem + env(safe-area-inset-right));
-            z-index: 950;
-            display: flex; gap: .65rem; align-items: center;
-        }
-        .btn {
-            padding: .45rem 1rem;
-            background: rgba(0,0,0,.65);
-            backdrop-filter: blur(10px);
-            border-radius: 7px;
-            font-family: 'Courier New', monospace;
-            font-size: .78rem;
-            letter-spacing: .1em;
-            text-transform: uppercase;
-            cursor: pointer;
-            transition: all .2s;
-            outline: none;
-        }
-        #btn-crt {
-            border: 1px solid rgba(255,0,255,.35);
-            color: rgba(255,0,255,.7);
-        }
-        #btn-crt:hover, #btn-crt.on {
-            border-color: var(--magenta);
-            color: var(--magenta);
-            box-shadow: 0 0 12px rgba(255,0,255,.3);
-        }
-        #btn-reset {
-            border: 1px solid rgba(57,255,20,.35);
-            color: rgba(57,255,20,.7);
-        }
-        #btn-reset:hover {
-            border-color: var(--green);
-            color: var(--green);
-            box-shadow: 0 0 12px rgba(57,255,20,.3);
-        }
-
         /* ── Loading Indicator ── */
         #loading {
-            position: fixed; inset: 0; z-index: 15;
+            position: fixed;
+            inset: 0 0 var(--bar-clear) 0;
+            z-index: 15;
             display: flex; flex-direction: column;
             align-items: center; justify-content: center;
             gap: 1.2rem;
@@ -389,6 +345,69 @@
             letter-spacing: .2em;
             text-transform: uppercase;
         }
+
+        /* ── Bottom Bar ── */
+        #bottom-bar {
+            position: fixed;
+            bottom: 0; left: 0; right: 0;
+            height: var(--bar-clear);
+            padding: 0 1rem env(safe-area-inset-bottom);
+            background: rgba(5,0,8,.9);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-top: 1px solid rgba(255,255,255,.07);
+            display: flex;
+            align-items: center;
+            gap: .75rem;
+            z-index: 960;
+        }
+
+        #bar-label {
+            flex: 1;
+            min-width: 0;
+            font-size: .72rem;
+            color: rgba(0,255,255,.65);
+            letter-spacing: .1em;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            opacity: 0;
+            transition: opacity .4s;
+        }
+        #bar-label.show { opacity: 1; }
+
+        /* ── Buttons ── */
+        .btn {
+            padding: .35rem .85rem;
+            background: transparent;
+            border-radius: 5px;
+            font-family: 'Courier New', monospace;
+            font-size: .73rem;
+            letter-spacing: .1em;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all .2s;
+            outline: none;
+            flex-shrink: 0;
+        }
+        #btn-crt {
+            border: 1px solid rgba(255,0,255,.3);
+            color: rgba(255,0,255,.6);
+        }
+        #btn-crt:hover, #btn-crt.on {
+            border-color: var(--magenta);
+            color: var(--magenta);
+            box-shadow: 0 0 10px rgba(255,0,255,.2);
+        }
+        #btn-reset {
+            border: 1px solid rgba(57,255,20,.3);
+            color: rgba(57,255,20,.6);
+        }
+        #btn-reset:hover {
+            border-color: var(--green);
+            color: var(--green);
+            box-shadow: 0 0 10px rgba(57,255,20,.2);
+        }
     </style>
 </head>
 <body>
@@ -403,9 +422,6 @@
 
 <!-- Stars -->
 <div id="stars"></div>
-
-<!-- File name badge -->
-<div id="badge"></div>
 
 <!-- Landing -->
 <div id="landing">
@@ -437,8 +453,9 @@
     <div id="ruffle-host"></div>
 </div>
 
-<!-- Controls -->
-<div id="controls">
+<!-- Bottom bar: filename left, buttons right, all one row -->
+<div id="bottom-bar">
+    <span id="bar-label"></span>
     <button class="btn" id="btn-crt">⊡ CRT</button>
     <button class="btn" id="btn-reset">↺ Reset</button>
 </div>
@@ -452,7 +469,14 @@ if ('serviceWorker' in navigator) {
 }
 </script>
 
-<script>window.RufflePlayer = window.RufflePlayer || {};</script>
+<script>
+window.RufflePlayer = window.RufflePlayer || {};
+window.RufflePlayer.config = {
+    letterbox: "on",
+    splashScreen: false,
+    openUrlMode: "deny",
+};
+</script>
 <!-- ruffle-version: 0.2.0-nightly.2026.2.20 -->
 <script src="https://unpkg.com/@ruffle-rs/ruffle@0.2.0-nightly.2026.2.20"></script>
 <script>
@@ -478,7 +502,7 @@ if ('serviceWorker' in navigator) {
     const dropCard    = document.getElementById('drop-card');
     const playerWrap  = document.getElementById('player-wrap');
     const ruffleHost  = document.getElementById('ruffle-host');
-    const badge       = document.getElementById('badge');
+    const barLabel    = document.getElementById('bar-label');
     const loadingEl   = document.getElementById('loading');
     const btnCrt      = document.getElementById('btn-crt');
     const btnReset    = document.getElementById('btn-reset');
@@ -509,8 +533,8 @@ if ('serviceWorker' in navigator) {
         playerWrap.classList.remove('active');
         landing.classList.remove('gone');
         loadingEl.classList.remove('show');
-        badge.classList.remove('show');
-        badge.textContent = '';
+        barLabel.classList.remove('show');
+        barLabel.textContent = '';
     }
 
     /* ── Load SWF ───────────────────────────────────────── */
@@ -538,8 +562,8 @@ if ('serviceWorker' in navigator) {
             const ruffle = window.RufflePlayer.newest();
             if (!ruffle) throw new Error('Ruffle not initialised — check your internet connection.');
             player = ruffle.createPlayer();
-            player.style.width  = '100%';
-            player.style.height = '100%';
+            player.style.width   = '100%';
+            player.style.height  = '100%';
             player.style.display = 'block';
             ruffleHost.appendChild(player);
             await player.load({ data });
@@ -550,8 +574,8 @@ if ('serviceWorker' in navigator) {
 
         loadingEl.classList.remove('show');
         playerWrap.classList.add('active');
-        badge.textContent = '▶  ' + file.name;
-        badge.classList.add('show');
+        barLabel.textContent = '▶  ' + file.name;
+        barLabel.classList.add('show');
     }
 
     /* ── Drag & Drop ────────────────────────────────────── */
