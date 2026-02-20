@@ -6,6 +6,8 @@
 
 🌐 **Live site:** [flash.wemiller.com](https://flash.wemiller.com)
 
+![Ruffle My landing screen](screenshots/landing.png)
+
 ---
 
 ## ✨ Features
