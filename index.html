@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ruffle My 🪶</title>
+    <!--
+        OFFLINE USE:
+        1. Download Ruffle from https://ruffle.rs/#releases (self-hosted zip)
+        2. Extract into a folder named 'ruffle/' next to this file
+        3. Replace the CDN script tag below with: <script src="ruffle/ruffle.js"></script>
+    -->
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --cyan:    #00ffff;
+            --magenta: #ff00ff;
+            --green:   #39ff14;
+            --yellow:  #ffff00;
+            --purple:  #bf00ff;
+            --pink:    #ff006e;
+            --bg:      #050008;
+        }
+
+        html, body {
+            width: 100%; height: 100%;
+            overflow: hidden;
+            background: var(--bg);
+            font-family: 'Courier New', monospace;
+            color: var(--cyan);
+        }
+
+        /* ── Background ── */
+        body::before {
+            content: '';
+            position: fixed; inset: 0;
+            background:
+                radial-gradient(ellipse 80% 50% at 50% -10%, rgba(140,0,255,.35) 0%, transparent 70%),
+                radial-gradient(ellipse 60% 40% at 0% 100%,  rgba(0,80,255,.18) 0%, transparent 60%),
+                radial-gradient(ellipse 40% 30% at 100% 80%, rgba(255,0,110,.12) 0%, transparent 60%);
+            pointer-events: none; z-index: 0;
+        }
+
+        body::after {
+            content: '';
+            position: fixed; inset: 0;
+            background:
+                linear-gradient(rgba(0,255,255,.04) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0,255,255,.04) 1px, transparent 1px);
+            background-size: 44px 44px;
+            animation: grid-scroll 12s linear infinite;
+            pointer-events: none; z-index: 0;
+        }
+
+        @keyframes grid-scroll {
+            from { background-position: 0 0; }
+            to   { background-position: 0 44px; }
+        }
+
+        /* ── Stars ── */
+        #stars { position: fixed; inset: 0; pointer-events: none; z-index: 1; }
+        .star {
+            position: absolute;
+            border-radius: 50%;
+            background: #fff;
+            animation: twinkle var(--d) ease-in-out infinite;
+            animation-delay: var(--delay);
+        }
+        @keyframes twinkle {
+            0%,100% { opacity: 0; transform: scale(.4); }
+            50%      { opacity: 1; transform: scale(1); }
+        }
+
+        /* ── CRT Overlay ── */
+        #crt {
+            position: fixed; inset: 0; z-index: 900;
+            pointer-events: none;
+            opacity: 0; transition: opacity .3s;
+        }
+        #crt::before {
+            content: '';
+            position: absolute; inset: 0;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 2px,
+                rgba(0,0,0,.18) 2px,
+                rgba(0,0,0,.18) 4px
+            );
+        }
+        #crt::after {
+            content: '';
+            position: absolute; inset: 0;
+            background: radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,.75) 100%);
+        }
+        #crt-scan {
+            position: fixed; left: 0; right: 0; top: -4px;
+            height: 4px;
+            background: rgba(0,255,255,.12);
+            z-index: 901; pointer-events: none;
+            opacity: 0; transition: opacity .3s;
+            animation: scan-roll 5s linear infinite;
+        }
+        @keyframes scan-roll { from { top: -4px; } to { top: 100vh; } }
+
+        body.crt #crt        { opacity: 1; }
+        body.crt #crt-scan   { opacity: 1; }
+        body.crt              { filter: contrast(1.08) brightness(.96) saturate(1.1); }
+
+        /* ── Drag-active page border ── */
+        #drag-ring {
+            position: fixed; inset: 0; z-index: 950;
+            border: 3px solid transparent;
+            pointer-events: none;
+            transition: border-color .15s, box-shadow .15s;
+        }
+        body.drag-active #drag-ring {
+            border-color: var(--green);
+            box-shadow: inset 0 0 40px rgba(57,255,20,.08), 0 0 20px rgba(57,255,20,.3);
+            animation: ring-pulse .6s ease-in-out infinite alternate;
+        }
+        @keyframes ring-pulse {
+            from { border-color: rgba(57,255,20,.6); }
+            to   { border-color: rgba(57,255,20,1);  }
+        }
+
+        /* ── Drop Overlay (captures drops over the ruffle iframe) ── */
+        #drop-overlay {
+            position: fixed; inset: 0; z-index: 200;
+            pointer-events: none;
+        }
+        body.drag-active #drop-overlay { pointer-events: all; }
+
+        /* ── Landing ── */
+        #landing {
+            position: fixed; inset: 0; z-index: 10;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            gap: 2.2rem;
+            transition: opacity .5s, transform .5s;
+        }
+        #landing.gone {
+            opacity: 0; pointer-events: none;
+            transform: scale(.96);
+        }
+
+        /* ── Brand ── */
+        .brand { text-align: center; user-select: none; }
+
+        .brand h1 {
+            font-size: clamp(2.4rem, 6vw, 5.2rem);
+            font-weight: 900;
+            letter-spacing: .12em;
+            text-transform: uppercase;
+            color: var(--cyan);
+            text-shadow:
+                0 0 6px  var(--cyan),
+                0 0 14px var(--cyan),
+                0 0 30px var(--cyan),
+                0 0 60px rgba(0,255,255,.5);
+            animation: neon-flicker 6s ease-in-out infinite;
+        }
+        @keyframes neon-flicker {
+            0%,18%,20%,22%,52%,54%,64%,100% {
+                text-shadow:
+                    0 0 6px  var(--cyan),
+                    0 0 14px var(--cyan),
+                    0 0 30px var(--cyan),
+                    0 0 60px rgba(0,255,255,.5);
+            }
+            19%,21%,53% {
+                text-shadow: none;
+                color: rgba(0,255,255,.6);
+            }
+        }
+
+        .brand .sub {
+            margin-top: .5rem;
+            font-size: clamp(.7rem, 1.4vw, .95rem);
+            letter-spacing: .35em;
+            text-transform: uppercase;
+            color: var(--magenta);
+            text-shadow: 0 0 10px var(--magenta);
+            animation: sub-pulse 2.5s ease-in-out infinite;
+        }
+        @keyframes sub-pulse {
+            0%,100% { opacity: .75; }
+            50%      { opacity: 1; }
+        }
+
+        /* ── Drop Card ── */
+        .drop-card {
+            position: relative;
+            width: min(580px, 90vw);
+            padding: 3rem 2.5rem;
+            background: rgba(255,255,255,.04);
+            backdrop-filter: blur(24px) saturate(1.4);
+            -webkit-backdrop-filter: blur(24px) saturate(1.4);
+            border: 1.5px solid rgba(255,255,255,.12);
+            border-radius: 18px;
+            text-align: center;
+            cursor: pointer;
+            transition: transform .25s, box-shadow .25s, border-color .25s, background .25s;
+            overflow: hidden;
+        }
+        .drop-card::before, .drop-card::after {
+            content: ''; position: absolute; width: 28px; height: 28px;
+        }
+        .drop-card::before {
+            top: -1px; left: -1px;
+            border-top: 2.5px solid var(--cyan);
+            border-left: 2.5px solid var(--cyan);
+            border-radius: 4px 0 0 0;
+        }
+        .drop-card::after {
+            bottom: -1px; right: -1px;
+            border-bottom: 2.5px solid var(--magenta);
+            border-right: 2.5px solid var(--magenta);
+            border-radius: 0 0 4px 0;
+        }
+        .drop-card:hover {
+            border-color: rgba(255,255,255,.2);
+            box-shadow: 0 0 30px rgba(0,255,255,.08);
+        }
+        .drop-card.over {
+            border-color: var(--green) !important;
+            background: rgba(57,255,20,.07) !important;
+            box-shadow: 0 0 30px rgba(57,255,20,.25), inset 0 0 20px rgba(57,255,20,.04) !important;
+            transform: scale(1.025) !important;
+        }
+
+        .inner-ring {
+            position: absolute; inset: 14px;
+            border: 1.5px dashed rgba(0,255,255,.22);
+            border-radius: 10px;
+            pointer-events: none;
+            animation: ring-color 8s linear infinite;
+        }
+        @keyframes ring-color {
+            0%   { border-color: rgba(0,255,255,.22); }
+            33%  { border-color: rgba(255,0,255,.22); }
+            66%  { border-color: rgba(57,255,20,.22); }
+            100% { border-color: rgba(0,255,255,.22); }
+        }
+
+        .drop-icon {
+            display: block;
+            font-size: 3.8rem;
+            margin-bottom: 1.1rem;
+            animation: float 3.5s ease-in-out infinite;
+            filter: drop-shadow(0 0 12px rgba(0,255,255,.6));
+        }
+        @keyframes float {
+            0%,100% { transform: translateY(0); }
+            50%      { transform: translateY(-12px); }
+        }
+
+        .drop-main {
+            font-size: 1.15rem;
+            color: rgba(255,255,255,.85);
+            margin-bottom: .5rem;
+            letter-spacing: .04em;
+        }
+        .drop-hint {
+            font-size: .78rem;
+            color: rgba(255,255,255,.35);
+            letter-spacing: .12em;
+        }
+
+        /* ── Tagline ── */
+        .tagline {
+            font-size: clamp(.65rem, 1.1vw, .82rem);
+            color: rgba(255,255,255,.28);
+            letter-spacing: .25em;
+            text-transform: uppercase;
+            text-align: center;
+        }
+        .tagline span { color: var(--yellow); opacity: .6; }
+
+        /* ── Player ── */
+        #player-wrap {
+            position: fixed; inset: 0; z-index: 5;
+            opacity: 0; pointer-events: none;
+            transition: opacity .5s;
+        }
+        #player-wrap.active {
+            opacity: 1; pointer-events: all;
+        }
+        #ruffle-host {
+            width: 100%; height: 100%;
+        }
+        #ruffle-host ruffle-player {
+            width: 100%; height: 100%;
+            display: block;
+        }
+
+        /* ── File Badge ── */
+        #badge {
+            position: fixed; top: 1rem; left: 50%;
+            transform: translateX(-50%);
+            z-index: 100;
+            padding: .38rem 1.1rem;
+            background: rgba(0,0,0,.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(0,255,255,.28);
+            border-radius: 20px;
+            color: rgba(0,255,255,.85);
+            font-size: .72rem;
+            letter-spacing: .12em;
+            white-space: nowrap;
+            max-width: 60vw;
+            overflow: hidden; text-overflow: ellipsis;
+            opacity: 0; transition: opacity .35s;
+        }
+        #badge.show { opacity: 1; }
+
+        /* ── Controls ── */
+        #controls {
+            position: fixed; bottom: 1.4rem; right: 1.4rem;
+            z-index: 950;
+            display: flex; gap: .65rem; align-items: center;
+        }
+        .btn {
+            padding: .45rem 1rem;
+            background: rgba(0,0,0,.65);
+            backdrop-filter: blur(10px);
+            border-radius: 7px;
+            font-family: 'Courier New', monospace;
+            font-size: .78rem;
+            letter-spacing: .1em;
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all .2s;
+            outline: none;
+        }
+        #btn-crt {
+            border: 1px solid rgba(255,0,255,.35);
+            color: rgba(255,0,255,.7);
+        }
+        #btn-crt:hover, #btn-crt.on {
+            border-color: var(--magenta);
+            color: var(--magenta);
+            box-shadow: 0 0 12px rgba(255,0,255,.3);
+        }
+        #btn-reset {
+            border: 1px solid rgba(57,255,20,.35);
+            color: rgba(57,255,20,.7);
+        }
+        #btn-reset:hover {
+            border-color: var(--green);
+            color: var(--green);
+            box-shadow: 0 0 12px rgba(57,255,20,.3);
+        }
+
+        /* ── Loading Indicator ── */
+        #loading {
+            position: fixed; inset: 0; z-index: 15;
+            display: flex; flex-direction: column;
+            align-items: center; justify-content: center;
+            gap: 1.2rem;
+            opacity: 0; pointer-events: none;
+            transition: opacity .3s;
+        }
+        #loading.show { opacity: 1; }
+        .load-ring {
+            width: 52px; height: 52px;
+            border: 3px solid rgba(0,255,255,.15);
+            border-top-color: var(--cyan);
+            border-radius: 50%;
+            animation: spin .9s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .load-text {
+            font-size: .8rem;
+            color: rgba(0,255,255,.6);
+            letter-spacing: .2em;
+            text-transform: uppercase;
+        }
+    </style>
+</head>
+<body>
+
+<!-- CRT layers -->
+<div id="crt"></div>
+<div id="crt-scan"></div>
+
+<!-- Drag ring & overlay -->
+<div id="drag-ring"></div>
+<div id="drop-overlay"></div>
+
+<!-- Stars -->
+<div id="stars"></div>
+
+<!-- File name badge -->
+<div id="badge"></div>
+
+<!-- Landing -->
+<div id="landing">
+    <div class="brand">
+        <h1>Ruffle My 🪶</h1>
+        <p class="sub">Flash Emulator &mdash; No Plugin Required</p>
+    </div>
+
+    <div class="drop-card" id="drop-card">
+        <div class="inner-ring"></div>
+        <span class="drop-icon">💾</span>
+        <p class="drop-main">Drop your SWF file here</p>
+        <p class="drop-hint">Drag &amp; drop &nbsp;·&nbsp; Any .swf file &nbsp;·&nbsp; Instant playback</p>
+    </div>
+
+    <p class="tagline">
+        <span>✦</span>&nbsp; Play your flash archive anywhere &nbsp;<span>✦</span>
+    </p>
+</div>
+
+<!-- Loading state -->
+<div id="loading">
+    <div class="load-ring"></div>
+    <p class="load-text">Loading SWF&hellip;</p>
+</div>
+
+<!-- Ruffle player -->
+<div id="player-wrap">
+    <div id="ruffle-host"></div>
+</div>
+
+<!-- Controls -->
+<div id="controls">
+    <button class="btn" id="btn-crt">⊡ CRT</button>
+    <button class="btn" id="btn-reset">↺ Reset</button>
+</div>
+
+<script>window.RufflePlayer = window.RufflePlayer || {};</script>
+<!-- ruffle-version: 0.2.0-nightly.2026.2.20 -->
+<script src="https://unpkg.com/@ruffle-rs/ruffle@0.2.0-nightly.2026.2.20"></script>
+<script>
+(function () {
+    'use strict';
+
+    /* ── Stars ─────────────────────────────────────────── */
+    const starsEl = document.getElementById('stars');
+    for (let i = 0; i < 90; i++) {
+        const s = document.createElement('div');
+        s.className = 'star';
+        const sz = Math.random() * 2.4 + 0.4;
+        s.style.cssText =
+            `left:${Math.random()*100}%;top:${Math.random()*100}%;` +
+            `width:${sz}px;height:${sz}px;` +
+            `--d:${(Math.random()*4+1.5).toFixed(1)}s;` +
+            `--delay:${(Math.random()*5).toFixed(1)}s;`;
+        starsEl.appendChild(s);
+    }
+
+    /* ── Elements ───────────────────────────────────────── */
+    const landing     = document.getElementById('landing');
+    const dropCard    = document.getElementById('drop-card');
+    const playerWrap  = document.getElementById('player-wrap');
+    const ruffleHost  = document.getElementById('ruffle-host');
+    const badge       = document.getElementById('badge');
+    const loadingEl   = document.getElementById('loading');
+    const btnCrt      = document.getElementById('btn-crt');
+    const btnReset    = document.getElementById('btn-reset');
+    const dropOverlay = document.getElementById('drop-overlay');
+
+    /* ── State ──────────────────────────────────────────── */
+    let player    = null;
+    let crtOn     = false;
+    let dragCount = 0;
+
+    /* ── CRT ────────────────────────────────────────────── */
+    btnCrt.addEventListener('click', () => {
+        crtOn = !crtOn;
+        document.body.classList.toggle('crt', crtOn);
+        btnCrt.classList.toggle('on', crtOn);
+        btnCrt.textContent = crtOn ? '⊠ CRT' : '⊡ CRT';
+    });
+
+    /* ── Reset ──────────────────────────────────────────── */
+    btnReset.addEventListener('click', reset);
+
+    function reset() {
+        if (player) {
+            try { player.pause?.(); } catch (e) {}
+            ruffleHost.innerHTML = '';
+            player = null;
+        }
+        playerWrap.classList.remove('active');
+        landing.classList.remove('gone');
+        loadingEl.classList.remove('show');
+        badge.classList.remove('show');
+        badge.textContent = '';
+    }
+
+    /* ── Load SWF ───────────────────────────────────────── */
+    async function loadSwf(file) {
+        if (player) {
+            try { player.pause?.(); } catch (e) {}
+            ruffleHost.innerHTML = '';
+            player = null;
+        }
+
+        landing.classList.add('gone');
+        loadingEl.classList.add('show');
+        playerWrap.classList.remove('active');
+
+        let data;
+        try {
+            const buf = await file.arrayBuffer();
+            data = new Uint8Array(buf);
+        } catch (e) {
+            alert('Could not read file: ' + e.message);
+            reset(); return;
+        }
+
+        try {
+            const ruffle = window.RufflePlayer.newest();
+            if (!ruffle) throw new Error('Ruffle not initialised — check your internet connection.');
+            player = ruffle.createPlayer();
+            player.style.width  = '100%';
+            player.style.height = '100%';
+            player.style.display = 'block';
+            ruffleHost.appendChild(player);
+            await player.load({ data });
+        } catch (e) {
+            alert('Failed to load SWF:\n' + e.message);
+            reset(); return;
+        }
+
+        loadingEl.classList.remove('show');
+        playerWrap.classList.add('active');
+        badge.textContent = '▶  ' + file.name;
+        badge.classList.add('show');
+    }
+
+    /* ── Drag & Drop ────────────────────────────────────── */
+    function onDragEnter(e) {
+        e.preventDefault();
+        dragCount++;
+        if (dragCount === 1) {
+            document.body.classList.add('drag-active');
+            dropCard.classList.add('over');
+        }
+    }
+    function onDragLeave() {
+        dragCount = Math.max(0, dragCount - 1);
+        if (dragCount === 0) {
+            document.body.classList.remove('drag-active');
+            dropCard.classList.remove('over');
+        }
+    }
+    function onDragOver(e) { e.preventDefault(); }
+
+    async function onDrop(e) {
+        e.preventDefault();
+        dragCount = 0;
+        document.body.classList.remove('drag-active');
+        dropCard.classList.remove('over');
+
+        const file = e.dataTransfer?.files?.[0];
+        if (!file) return;
+        if (!file.name.toLowerCase().endsWith('.swf')) {
+            alert('Please drop a .swf file.');
+            return;
+        }
+        await loadSwf(file);
+    }
+
+    document.addEventListener('dragenter', onDragEnter);
+    document.addEventListener('dragleave', onDragLeave);
+    document.addEventListener('dragover',  onDragOver);
+    document.addEventListener('drop',      onDrop);
+
+    dropOverlay.addEventListener('dragenter', onDragEnter);
+    dropOverlay.addEventListener('dragleave', onDragLeave);
+    dropOverlay.addEventListener('dragover',  onDragOver);
+    dropOverlay.addEventListener('drop',      onDrop);
+
+    /* ── Click-to-browse fallback ───────────────────────── */
+    dropCard.addEventListener('click', () => {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = '.swf';
+        input.onchange = (e) => {
+            const f = e.target.files?.[0];
+            if (f) loadSwf(f);
+        };
+        input.click();
+    });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,49 @@
+name: Update Ruffle Version
+
+on:
+  schedule:
+    - cron: '0 0 * * 1'  # Every Monday at midnight UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Get latest Ruffle version
+        id: version
+        run: |
+          VERSION=$(npm view @ruffle-rs/ruffle version 2>/dev/null)
+          if [ -z "$VERSION" ]; then
+            echo "Could not fetch Ruffle version. Exiting."
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Latest Ruffle version: $VERSION"
+
+      - name: Update index.html
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          # Update the comment marker
+          sed -i "s|<!-- ruffle-version: [^>]* -->|<!-- ruffle-version: ${VERSION} -->|g" index.html
+          # Update the script src (handles both pinned and unpinned URLs)
+          sed -i "s|unpkg\.com/@ruffle-rs/ruffle[^\"]*|unpkg.com/@ruffle-rs/ruffle@${VERSION}|g" index.html
+          echo "Script tag is now:"
+          grep -o 'ruffle[^"]*' index.html | grep unpkg || true
+
+      - name: Commit and push if changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          if git diff --cached --quiet; then
+            echo "No version change — already up to date."
+          else
+            git commit -m "chore: update Ruffle.rs to v${{ steps.version.outputs.version }}"
+            git push
+          fi
