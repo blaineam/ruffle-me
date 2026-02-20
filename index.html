@@ -2,8 +2,16 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Ruffle My 🪶</title>
+
+    <!-- PWA / iOS -->
+    <meta name="theme-color" content="#050008">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Ruffle My">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
     <!--
         OFFLINE USE:
         1. Download Ruffle from https://ruffle.rs/#releases (self-hosted zip)
@@ -297,7 +305,9 @@
 
         /* ── File Badge ── */
         #badge {
-            position: fixed; top: 1rem; left: 50%;
+            position: fixed;
+            top: calc(1rem + env(safe-area-inset-top));
+            left: 50%;
             transform: translateX(-50%);
             z-index: 100;
             padding: .38rem 1.1rem;
@@ -317,7 +327,9 @@
 
         /* ── Controls ── */
         #controls {
-            position: fixed; bottom: 1.4rem; right: 1.4rem;
+            position: fixed;
+            bottom: calc(1.4rem + env(safe-area-inset-bottom));
+            right: calc(1.4rem + env(safe-area-inset-right));
             z-index: 950;
             display: flex; gap: .65rem; align-items: center;
         }
@@ -430,6 +442,15 @@
     <button class="btn" id="btn-crt">⊡ CRT</button>
     <button class="btn" id="btn-reset">↺ Reset</button>
 </div>
+
+<!-- Service Worker -->
+<script>
+if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(() => {});
+    });
+}
+</script>
 
 <script>window.RufflePlayer = window.RufflePlayer || {};</script>
 <!-- ruffle-version: 0.2.0-nightly.2026.2.20 -->
